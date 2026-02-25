@@ -23,6 +23,13 @@ String topic_topup    = "rfid/" + String(team_id) + "/card/topup";
 String topic_payment  = "rfid/" + String(team_id) + "/card/payment";
 String topic_health   = "rfid/" + String(team_id) + "/device/health";
 String topic_lwt      = "rfid/" + String(team_id) + "/device/status";
+String topic_removed  = "rfid/" + String(team_id) + "/card/removed";
+
+// ----------------- Card Tracking -----------------
+String lastDetectedUID = "";
+bool cardPresent = false;
+unsigned long lastCardCheck = 0;
+const unsigned long CARD_CHECK_INTERVAL = 500; // Check every 500ms
 
 // ----------------- Pin Mapping -----------------
 #define RST_PIN D3
@@ -158,6 +165,7 @@ void reconnect() {
       client.subscribe(topic_topup.c_str());
       client.subscribe(topic_payment.c_str());
       client.subscribe(topic_health.c_str());
+      client.subscribe(topic_removed.c_str());
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -218,37 +226,72 @@ void loop() {
   }
 
   // ----------------- RFID Scanning -----------------
-  if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
-    // Build UID string
-    String uid = "";
-    for (byte i = 0; i < mfrc522.uid.size; i++) {
-      if (mfrc522.uid.uidByte[i] < 0x10) uid += "0";
-      uid += String(mfrc522.uid.uidByte[i], HEX);
+  unsigned long currentMillis = millis();
+  
+  // Check for card presence
+  if (currentMillis - lastCardCheck >= CARD_CHECK_INTERVAL) {
+    lastCardCheck = currentMillis;
+    
+    // Check if a card is present
+    if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
+      // Build UID string
+      String uid = "";
+      for (byte i = 0; i < mfrc522.uid.size; i++) {
+        if (mfrc522.uid.uidByte[i] < 0x10) uid += "0";
+        uid += String(mfrc522.uid.uidByte[i], HEX);
+      }
+      uid.toUpperCase();
+
+      // Check if this is a new card or card just placed
+      if (uid != lastDetectedUID || !cardPresent) {
+        lastDetectedUID = uid;
+        cardPresent = true;
+        
+        float currentBalance = 50.0; // Simulated balance
+
+        Serial.print("Card Detected: ");
+        Serial.print(uid);
+        Serial.print(" | Balance: ");
+        Serial.println(currentBalance);
+
+        // Prepare JSON payload
+        StaticJsonDocument<255> doc;
+        doc["uid"] = uid;
+        doc["balance"] = currentBalance;
+        doc["status"] = "detected";
+        doc["present"] = true;
+        doc["ts"] = get_unix_time();
+
+        char buffer[255];
+        serializeJson(doc, buffer);
+        client.publish(topic_status.c_str(), buffer);
+      }
+
+      // Properly halt and stop crypto
+      mfrc522.PICC_HaltA();
+      mfrc522.PCD_StopCrypto1();
+      
+    } else {
+      // No card detected - check if card was removed
+      if (cardPresent) {
+        cardPresent = false;
+        
+        Serial.print("Card Removed: ");
+        Serial.println(lastDetectedUID);
+        
+        // Publish card removed event
+        StaticJsonDocument<200> doc;
+        doc["uid"] = lastDetectedUID;
+        doc["status"] = "removed";
+        doc["present"] = false;
+        doc["ts"] = get_unix_time();
+        
+        char buffer[200];
+        serializeJson(doc, buffer);
+        client.publish(topic_removed.c_str(), buffer);
+        
+        lastDetectedUID = "";
+      }
     }
-    uid.toUpperCase();
-
-    float currentBalance = 50.0; // Simulated balance
-
-    Serial.print("Card Detected: ");
-    Serial.print(uid);
-    Serial.print(" | Balance: ");
-    Serial.println(currentBalance);
-
-    // Prepare JSON payload
-    StaticJsonDocument<255> doc;
-    doc["uid"] = uid;
-    doc["balance"] = currentBalance;
-    doc["status"] = "detected";
-    doc["ts"] = get_unix_time();
-
-    char buffer[255];
-    serializeJson(doc, buffer);
-    client.publish(topic_status.c_str(), buffer);
-
-    // Properly halt and stop crypto
-    mfrc522.PICC_HaltA();
-    mfrc522.PCD_StopCrypto1();
-
-    delay(2000); // Debounce
   }
 }
