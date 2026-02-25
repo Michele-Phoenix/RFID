@@ -8,9 +8,10 @@ A complete RFID-based payment system with real-time card management, transaction
 
 <div align="center">
 
-# 🚀 **[VIEW LIVE APPLICATION →](http://157.173.101.159:9208)**
+#  **[VIEW LIVE APPLICATION ](http://157.173.101.159:9208)**
 
-## **Frontend:** http://157.173.101.159:9208  
+## **Frontend:** http://157.173.101.159:9208
+
 ## **Backend API:** http://157.173.101.159:8208
 
 <br>
@@ -45,8 +46,8 @@ A complete RFID-based payment system with real-time card management, transaction
 - **Frontend Port**: 9208
 - **MQTT Broker**: 157.173.101.159:1883
 
-
 #### Manual Start:
+
 ```bash
 # Terminal 1 - Backend
 cd backend
@@ -60,17 +61,20 @@ npm start
 ```
 
 **Access locally:**
+
 - Frontend: http://localhost:9208
 - Backend: http://localhost:8208
 
 ### VPS Deployment
 
 1. **Upload to VPS:**
+
 ```bash
 scp -r tap-to-pay root@157.173.101.159:/root/
 ```
 
 2. **Deploy:**
+
 ```bash
 ssh root@157.173.101.159
 cd /root/tap-to-pay
@@ -79,9 +83,9 @@ chmod +x deploy.sh
 ```
 
 3. **Access online:**
+
 - Frontend: http://157.173.101.159:9208
 - Backend: http://157.173.101.159:8208
-
 
 ## 📡 MQTT Topics
 
@@ -94,15 +98,18 @@ chmod +x deploy.sh
 ## 🔌 HTTP API Endpoints
 
 ### Cards
+
 - `GET /cards` - Get all cards
 - `GET /card/:uid` - Get specific card details
 - `POST /topup` - Top up a card (requires `uid`, `amount`, and `holderName` for new cards)
 
 ### Transactions
+
 - `GET /transactions` - Get all transactions (optional `?limit=100`)
 - `GET /transactions/:uid` - Get transaction history for specific card
 
 ### WebSocket Events
+
 - `card-status` - Emitted when card is detected
 - `card-balance` - Emitted when balance is updated
 
@@ -113,7 +120,7 @@ chmod +x deploy.sh
 | 3.3V      | 3V3                   | Power     |
 | RST       | D3 (GPIO0)            | Reset     |
 | GND       | GND                   | Ground    |
-| MISO      | D6 (GPIO12)           | SPI MISO  |
+| MISO      | D6 (GPI<br />O12)     | SPI MISO  |
 | MOSI      | D7 (GPIO13)           | SPI MOSI  |
 | SCK       | D5 (GPIO14)           | SPI Clock |
 | SDA (SS)  | D4 (GPIO2)            | SPI SS    |
@@ -131,6 +138,7 @@ chmod +x deploy.sh
 ## 🎨 Dashboard Features
 
 ### Sidebar
+
 - Navigation menu (Cards, Analytics, Settings)
 - Real-time system status monitoring
   - MQTT Broker connection
@@ -139,6 +147,7 @@ chmod +x deploy.sh
 - Team info and uptime counter
 
 ### Main Content
+
 - **Quick Stats Cards**
   - Total Cards
   - Today's Transactions
@@ -151,6 +160,7 @@ chmod +x deploy.sh
 ## 📊 Database Schema
 
 ### Card Collection
+
 ```javascript
 {
   uid: String (unique),
@@ -163,6 +173,7 @@ chmod +x deploy.sh
 ```
 
 ### Transaction Collection
+
 ```javascript
 {
   uid: String,
@@ -179,13 +190,16 @@ chmod +x deploy.sh
 ## 🔧 Configuration
 
 ### Backend (.env)
+
 ```env
 MONGODB_URI=your_mongodb_connection_string
 PORT=8208
 ```
 
 ### Auto-Configuration
+
 The frontend automatically detects the environment:
+
 - **Local**: Uses `localhost:8208`
 - **Production**: Uses `157.173.101.159:8208`
 
@@ -213,16 +227,19 @@ pm2 monit                          # Monitor resources
 ## 🐛 Troubleshooting
 
 ### Backend Issues
+
 - Check MongoDB connection in `.env`
 - Verify port 8208 is available: `lsof -i :8208`
 - Check logs: `pm2 logs tap-to-pay-backend`
 
 ### Frontend Issues
+
 - Verify backend is running
 - Check browser console for errors
 - Test backend: `curl http://localhost:8208/cards`
 
 ### MQTT Issues
+
 - Verify MQTT broker is running on port 1883
 - Check Arduino serial monitor for connection status
 - Test MQTT: `telnet 157.173.101.159 1883`
