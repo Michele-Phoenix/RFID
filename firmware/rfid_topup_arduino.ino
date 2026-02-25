@@ -20,6 +20,7 @@ const char* team_id = "team_rdf";
 String topic_status   = "rfid/" + String(team_id) + "/card/status";
 String topic_balance  = "rfid/" + String(team_id) + "/card/balance";
 String topic_topup    = "rfid/" + String(team_id) + "/card/topup";
+String topic_payment  = "rfid/" + String(team_id) + "/card/payment";
 String topic_health   = "rfid/" + String(team_id) + "/device/health";
 String topic_lwt      = "rfid/" + String(team_id) + "/device/status";
 
@@ -89,27 +90,55 @@ void callback(char* topic, byte* payload, unsigned int length) {
   deserializeJson(doc, payload, length);
 
   const char* uid = doc["uid"];
-  float amount = doc["amount"];
+  String topicStr = String(topic);
 
-  // Simulate old balance
-  float simulatedOldBalance = 0;
-  float newBalance = simulatedOldBalance + amount;
+  if (topicStr == topic_topup) {
+    // Handle top-up: "amount" is the NEW total balance from backend
+    float newBalance = doc["amount"];
 
-  // Prepare response
-  StaticJsonDocument<200> responseDoc;
-  responseDoc["uid"] = uid;
-  responseDoc["new_balance"] = newBalance;
-  responseDoc["status"] = "success";
-  responseDoc["ts"] = get_unix_time();
+    // Prepare response
+    StaticJsonDocument<200> responseDoc;
+    responseDoc["uid"] = uid;
+    responseDoc["new_balance"] = newBalance;
+    responseDoc["status"] = "success";
+    responseDoc["type"] = "topup";
+    responseDoc["ts"] = get_unix_time();
 
-  char buffer[200];
-  serializeJson(responseDoc, buffer);
-  client.publish(topic_balance.c_str(), buffer);
+    char buffer[200];
+    serializeJson(responseDoc, buffer);
+    client.publish(topic_balance.c_str(), buffer);
 
-  Serial.print("Updated balance for ");
-  Serial.print(uid);
-  Serial.print(": ");
-  Serial.println(newBalance);
+    Serial.print("Top-up confirmed for ");
+    Serial.print(uid);
+    Serial.print(": balance = ");
+    Serial.println(newBalance);
+
+  } else if (topicStr == topic_payment) {
+    // Handle payment: "amount" is the NEW balance, "deducted" is the charge
+    float newBalance = doc["amount"];
+    float deducted = doc["deducted"];
+    const char* desc = doc["description"] | "Payment";
+
+    // Prepare balance update response
+    StaticJsonDocument<256> responseDoc;
+    responseDoc["uid"] = uid;
+    responseDoc["new_balance"] = newBalance;
+    responseDoc["deducted"] = deducted;
+    responseDoc["status"] = "success";
+    responseDoc["type"] = "payment";
+    responseDoc["ts"] = get_unix_time();
+
+    char buffer[256];
+    serializeJson(responseDoc, buffer);
+    client.publish(topic_balance.c_str(), buffer);
+
+    Serial.print("Payment processed for ");
+    Serial.print(uid);
+    Serial.print(": -$");
+    Serial.print(deducted);
+    Serial.print(", new balance = ");
+    Serial.println(newBalance);
+  }
 }
 
 // ----------------- MQTT Reconnect -----------------
@@ -127,6 +156,7 @@ void reconnect() {
 
       // Subscribe to topics
       client.subscribe(topic_topup.c_str());
+      client.subscribe(topic_payment.c_str());
       client.subscribe(topic_health.c_str());
     } else {
       Serial.print("failed, rc=");
