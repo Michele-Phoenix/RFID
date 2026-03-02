@@ -6,11 +6,11 @@ const config = {
     
     // If running on localhost, use local backend
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:8208';
+      return 'http://localhost:8245';
     }
     
     // If running on production VPS
-    return 'http://157.173.101.159:8208';
+    return 'http://157.173.101.159:8245';
   }
 };
 
